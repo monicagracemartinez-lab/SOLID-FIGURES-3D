@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>3D Solid Figures for Kids</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Comic Sans MS, Arial;
+      background: linear-gradient(to bottom, #aee1ff, #ffffff);
+    }
+    #title {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      text-align: center;
+      font-size: 32px;
+      font-weight: bold;
+      color: #ff4081;
+      text-shadow: 2px 2px white;
+    }
+    #instructions {
+      position: absolute;
+      top: 60px;
+      width: 100%;
+      text-align: center;
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+<div id="title">🌟 Explore 3D Solid Figures 🌟</div>
+<div id="instructions">
+Click and drag each shape to rotate it in 3D. Count faces, edges, and vertices!
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+// Scene & Camera
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0xaee1ff);
+
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 12, 30);
+
+// Renderer
+let renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Lights
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(10, 20, 15);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+// Materials
+function faceMaterial(color){
+  return new THREE.MeshStandardMaterial({color: color, opacity:0.6, transparent:true, roughness:0.4, metalness:0.1});
+}
+let edgeMaterial = new THREE.LineBasicMaterial({color:0x000000});
+let vertexMaterial = new THREE.MeshStandardMaterial({color:0x000000});
+
+// Create shapes array
+let shapes = [];
+
+function addShape(geometry, faceColor, x, y){
+  let mesh = new THREE.Mesh(geometry, faceMaterial(faceColor));
+  mesh.position.set(x,y,0);
+  scene.add(mesh);
+
+  // Edges
+  let edges = new THREE.EdgesGeometry(geometry);
+  let line = new THREE.LineSegments(edges, edgeMaterial);
+  line.position.copy(mesh.position);
+  scene.add(line);
+
+  // Vertices
+  let vertexPoints = [];
+  let positions = geometry.attributes.position;
+  for(let i=0; i<positions.count; i++){
+    let vx = positions.getX(i);
+    let vy = positions.getY(i);
+    let vz = positions.getZ(i);
+    let sphereGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    let vertexMesh = new THREE.Mesh(sphereGeo, vertexMaterial);
+    vertexMesh.position.set(vx, vy, vz);
+    vertexMesh.position.add(mesh.position);
+    scene.add(vertexMesh);
+    vertexPoints.push(vertexMesh);
+  }
+
+  shapes.push({mesh: mesh, edges: line, vertices: vertexPoints});
+}
+
+// Two rows of 3 shapes
+let spacingX = 10;
+let spacingY = 8;
+
+// First row
+addShape(new THREE.BoxGeometry(3,3,3), 0xff6f61, -spacingX, spacingY);  // Cube
+addShape(new THREE.BoxGeometry(4,3,2), 0xffc107, 0, spacingY);           // Rectangular Prism
+addShape(new THREE.SphereGeometry(2,32,32), 0x4caf50, spacingX, spacingY); // Sphere
+
+// Second row
+addShape(new THREE.CylinderGeometry(2,2,4,32), 0x2196f3, -spacingX, -spacingY); // Cylinder
+addShape(new THREE.ConeGeometry(2,4,32), 0x9c27b0, 0, -spacingY);             // Cone
+addShape(new THREE.ConeGeometry(2,4,4), 0xff9800, spacingX, -spacingY);       // Pyramid
+
+// Raycaster for grabbing shapes
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let selected = null;
+let prevMouse = {x:0, y:0};
+let isDragging = false;
+
+// Mouse down
+function onMouseDown(event){
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  let intersects = raycaster.intersectObjects(shapes.map(s=>s.mesh));
+  if(intersects.length > 0){
+    selected = intersects[0].object;
+    isDragging = true;
+    prevMouse.x = event.clientX;
+    prevMouse.y = event.clientY;
+  }
+}
+
+// Mouse move
+function onMouseMove(event){
+  if(isDragging && selected){
+    let deltaX = event.clientX - prevMouse.x;
+    let deltaY = event.clientY - prevMouse.y;
+    selected.rotation.y += deltaX * 0.01;
+    selected.rotation.x += deltaY * 0.01;
+
+    // Rotate edges and vertices with mesh
+    let s = shapes.find(s=>s.mesh===selected);
+    s.edges.rotation.copy(selected.rotation);
+    s.vertices.forEach(v=>{
+      let local = new THREE.Vector3().subVectors(v.position, selected.position);
+      local.applyEuler(new THREE.Euler(deltaY*0.01, deltaX*0.01, 0));
+      v.position.copy(selected.position).add(local);
+    });
+
+    prevMouse.x = event.clientX;
+    prevMouse.y = event.clientY;
+  }
+}
+
+// Mouse up
+function onMouseUp(event){
+  isDragging = false;
+  selected = null;
+}
+
+window.addEventListener('mousedown', onMouseDown, false);
+window.addEventListener('mousemove', onMouseMove, false);
+window.addEventListener('mouseup', onMouseUp, false);
+
+// Animate
+function animate(){
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// Resize
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
