@@ -14,17 +14,17 @@
       top: 10px;
       width: 100%;
       text-align: center;
-      font-size: 32px;
+      font-size: 28px;
       font-weight: bold;
       color: #ff4081;
       text-shadow: 2px 2px white;
     }
     #instructions {
       position: absolute;
-      top: 60px;
+      top: 50px;
       width: 100%;
       text-align: center;
-      font-size: 18px;
+      font-size: 16px;
       color: #333;
     }
   </style>
@@ -32,7 +32,7 @@
 <body>
 <div id="title">🌟 Explore 3D Solid Figures 🌟</div>
 <div id="instructions">
-Click and drag each shape to rotate it in 3D. Count faces, edges, and vertices!
+Touch and drag each shape to rotate it in 3D!
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -43,7 +43,7 @@ let scene = new THREE.Scene();
 scene.background = new THREE.Color(0xaee1ff);
 
 let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0, 12, 30);
+camera.position.set(0, 10, 25);
 
 // Renderer
 let renderer = new THREE.WebGLRenderer({antialias:true});
@@ -57,51 +57,27 @@ scene.add(light);
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
 // Materials
-function faceMaterial(color){
-  return new THREE.MeshStandardMaterial({color: color, opacity:0.6, transparent:true, roughness:0.4, metalness:0.1});
+function createMaterial(color){
+  return new THREE.MeshStandardMaterial({color: color, roughness:0.4, metalness:0.1});
 }
-let edgeMaterial = new THREE.LineBasicMaterial({color:0x000000});
-let vertexMaterial = new THREE.MeshStandardMaterial({color:0x000000});
 
-// Create shapes array
+// Shapes array
 let shapes = [];
 
-function addShape(geometry, faceColor, x, y){
-  let mesh = new THREE.Mesh(geometry, faceMaterial(faceColor));
+function addShape(geometry, color, x, y){
+  let mesh = new THREE.Mesh(geometry, createMaterial(color));
   mesh.position.set(x,y,0);
   scene.add(mesh);
-
-  // Edges
-  let edges = new THREE.EdgesGeometry(geometry);
-  let line = new THREE.LineSegments(edges, edgeMaterial);
-  line.position.copy(mesh.position);
-  scene.add(line);
-
-  // Vertices
-  let vertexPoints = [];
-  let positions = geometry.attributes.position;
-  for(let i=0; i<positions.count; i++){
-    let vx = positions.getX(i);
-    let vy = positions.getY(i);
-    let vz = positions.getZ(i);
-    let sphereGeo = new THREE.SphereGeometry(0.15, 8, 8);
-    let vertexMesh = new THREE.Mesh(sphereGeo, vertexMaterial);
-    vertexMesh.position.set(vx, vy, vz);
-    vertexMesh.position.add(mesh.position);
-    scene.add(vertexMesh);
-    vertexPoints.push(vertexMesh);
-  }
-
-  shapes.push({mesh: mesh, edges: line, vertices: vertexPoints});
+  shapes.push(mesh);
 }
 
 // Two rows of 3 shapes
 let spacingX = 10;
-let spacingY = 8;
+let spacingY = 7;
 
 // First row
-addShape(new THREE.BoxGeometry(3,3,3), 0xff6f61, -spacingX, spacingY);  // Cube
-addShape(new THREE.BoxGeometry(4,3,2), 0xffc107, 0, spacingY);           // Rectangular Prism
+addShape(new THREE.BoxGeometry(3,3,3), 0xff6f61, -spacingX, spacingY); // Cube
+addShape(new THREE.BoxGeometry(4,3,2), 0xffc107, 0, spacingY);          // Rectangular Prism
 addShape(new THREE.SphereGeometry(2,32,32), 0x4caf50, spacingX, spacingY); // Sphere
 
 // Second row
@@ -113,54 +89,64 @@ addShape(new THREE.ConeGeometry(2,4,4), 0xff9800, spacingX, -spacingY);       //
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
 let selected = null;
-let prevMouse = {x:0, y:0};
+let prevX = 0;
+let prevY = 0;
 let isDragging = false;
 
-// Mouse down
-function onMouseDown(event){
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+// Get pointer coordinates (works for mouse or touch)
+function getPointer(event){
+  if(event.touches){
+    return {x:event.touches[0].clientX, y:event.touches[0].clientY};
+  } else {
+    return {x:event.clientX, y:event.clientY};
+  }
+}
+
+// Pointer down
+function onPointerDown(event){
+  let pointer = getPointer(event);
+  mouse.x = (pointer.x / window.innerWidth) * 2 - 1;
+  mouse.y = -(pointer.y / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
-  let intersects = raycaster.intersectObjects(shapes.map(s=>s.mesh));
+  let intersects = raycaster.intersectObjects(shapes);
   if(intersects.length > 0){
     selected = intersects[0].object;
     isDragging = true;
-    prevMouse.x = event.clientX;
-    prevMouse.y = event.clientY;
+    prevX = pointer.x;
+    prevY = pointer.y;
   }
+  event.preventDefault();
 }
 
-// Mouse move
-function onMouseMove(event){
+// Pointer move
+function onPointerMove(event){
   if(isDragging && selected){
-    let deltaX = event.clientX - prevMouse.x;
-    let deltaY = event.clientY - prevMouse.y;
+    let pointer = getPointer(event);
+    let deltaX = pointer.x - prevX;
+    let deltaY = pointer.y - prevY;
     selected.rotation.y += deltaX * 0.01;
     selected.rotation.x += deltaY * 0.01;
-
-    // Rotate edges and vertices with mesh
-    let s = shapes.find(s=>s.mesh===selected);
-    s.edges.rotation.copy(selected.rotation);
-    s.vertices.forEach(v=>{
-      let local = new THREE.Vector3().subVectors(v.position, selected.position);
-      local.applyEuler(new THREE.Euler(deltaY*0.01, deltaX*0.01, 0));
-      v.position.copy(selected.position).add(local);
-    });
-
-    prevMouse.x = event.clientX;
-    prevMouse.y = event.clientY;
+    prevX = pointer.x;
+    prevY = pointer.y;
   }
+  event.preventDefault();
 }
 
-// Mouse up
-function onMouseUp(event){
+// Pointer up
+function onPointerUp(event){
   isDragging = false;
   selected = null;
+  event.preventDefault();
 }
 
-window.addEventListener('mousedown', onMouseDown, false);
-window.addEventListener('mousemove', onMouseMove, false);
-window.addEventListener('mouseup', onMouseUp, false);
+// Event listeners for desktop + mobile
+window.addEventListener('mousedown', onPointerDown, false);
+window.addEventListener('mousemove', onPointerMove, false);
+window.addEventListener('mouseup', onPointerUp, false);
+
+window.addEventListener('touchstart', onPointerDown, false);
+window.addEventListener('touchmove', onPointerMove, false);
+window.addEventListener('touchend', onPointerUp, false);
 
 // Animate
 function animate(){
@@ -177,6 +163,5 @@ window.addEventListener('resize', function(){
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
-
 </body>
 </html>
