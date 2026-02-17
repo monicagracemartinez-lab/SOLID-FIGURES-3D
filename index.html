@@ -43,7 +43,7 @@ let scene = new THREE.Scene();
 scene.background = new THREE.Color(0xaee1ff);
 
 let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0, 5, 25); // Adjusted camera height for centering
+camera.position.set(0, 0, 25);
 
 // Renderer
 let renderer = new THREE.WebGLRenderer({antialias:true});
@@ -64,6 +64,7 @@ function createMaterial(color){
 // Shapes array
 let shapes = [];
 
+// Function to add shape
 function addShape(geometry, color, x, y){
   let mesh = new THREE.Mesh(geometry, createMaterial(color));
   mesh.position.set(x,y,0);
@@ -71,19 +72,33 @@ function addShape(geometry, color, x, y){
   shapes.push(mesh);
 }
 
-// Two rows of 3 shapes (centered vertically)
-let spacingX = 10;
-let spacingY = 5;
+// Function to position shapes dynamically
+function positionShapes(){
+  let spacingX = window.innerWidth / 200; // adjust spacing based on screen width
+  let spacingY = window.innerHeight / 60; // adjust vertical spacing
 
-// Top row (y = +spacingY/2)
-addShape(new THREE.BoxGeometry(3,3,3), 0xff6f61, -spacingX, spacingY/2); // Cube
-addShape(new THREE.BoxGeometry(4,3,2), 0xffc107, 0, spacingY/2);          // Rectangular Prism
-addShape(new THREE.SphereGeometry(2,32,32), 0x4caf50, spacingX, spacingY/2); // Sphere
+  // Top row
+  shapes[0].position.set(-spacingX, spacingY, 0); // Cube
+  shapes[1].position.set(0, spacingY, 0);         // Rectangular Prism
+  shapes[2].position.set(spacingX, spacingY, 0);  // Sphere
 
-// Bottom row (y = -spacingY/2)
-addShape(new THREE.CylinderGeometry(2,2,4,32), 0x2196f3, -spacingX, -spacingY/2); // Cylinder
-addShape(new THREE.ConeGeometry(2,4,32), 0x9c27b0, 0, -spacingY/2);             // Cone
-addShape(new THREE.ConeGeometry(2,4,4), 0xff9800, spacingX, -spacingY/2);       // Pyramid
+  // Bottom row
+  shapes[3].position.set(-spacingX, -spacingY, 0); // Cylinder
+  shapes[4].position.set(0, -spacingY, 0);         // Cone
+  shapes[5].position.set(spacingX, -spacingY, 0);  // Pyramid
+}
+
+// Add shapes
+shapes.push(new THREE.Mesh(new THREE.BoxGeometry(3,3,3), createMaterial(0xff6f61)));   // Cube
+shapes.push(new THREE.Mesh(new THREE.BoxGeometry(4,3,2), createMaterial(0xffc107)));   // Rectangular Prism
+shapes.push(new THREE.Mesh(new THREE.SphereGeometry(2,32,32), createMaterial(0x4caf50))); // Sphere
+shapes.push(new THREE.Mesh(new THREE.CylinderGeometry(2,2,4,32), createMaterial(0x2196f3))); // Cylinder
+shapes.push(new THREE.Mesh(new THREE.ConeGeometry(2,4,32), createMaterial(0x9c27b0)));       // Cone
+shapes.push(new THREE.Mesh(new THREE.ConeGeometry(2,4,4), createMaterial(0xff9800)));       // Pyramid
+
+shapes.forEach(s => scene.add(s));
+
+positionShapes();
 
 // Raycaster for grabbing shapes
 let raycaster = new THREE.Raycaster();
@@ -156,12 +171,17 @@ function animate(){
 
 animate();
 
-// Resize
-window.addEventListener('resize', function(){
+// Resize and orientation change
+function onResize(){
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-});
+  positionShapes(); // reposition shapes to keep centered
+}
+
+window.addEventListener('resize', onResize);
+window.addEventListener('orientationchange', onResize);
+
 </script>
 </body>
 </html>
