@@ -43,7 +43,7 @@ let scene = new THREE.Scene();
 scene.background = new THREE.Color(0xaee1ff);
 
 let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0, 10, 25);
+camera.position.set(0, 5, 25); // Adjusted camera height for centering
 
 // Renderer
 let renderer = new THREE.WebGLRenderer({antialias:true});
@@ -71,19 +71,19 @@ function addShape(geometry, color, x, y){
   shapes.push(mesh);
 }
 
-// Two rows of 3 shapes
+// Two rows of 3 shapes (centered vertically)
 let spacingX = 10;
-let spacingY = 7;
+let spacingY = 5;
 
-// First row
-addShape(new THREE.BoxGeometry(3,3,3), 0xff6f61, -spacingX, spacingY); // Cube
-addShape(new THREE.BoxGeometry(4,3,2), 0xffc107, 0, spacingY);          // Rectangular Prism
-addShape(new THREE.SphereGeometry(2,32,32), 0x4caf50, spacingX, spacingY); // Sphere
+// Top row (y = +spacingY/2)
+addShape(new THREE.BoxGeometry(3,3,3), 0xff6f61, -spacingX, spacingY/2); // Cube
+addShape(new THREE.BoxGeometry(4,3,2), 0xffc107, 0, spacingY/2);          // Rectangular Prism
+addShape(new THREE.SphereGeometry(2,32,32), 0x4caf50, spacingX, spacingY/2); // Sphere
 
-// Second row
-addShape(new THREE.CylinderGeometry(2,2,4,32), 0x2196f3, -spacingX, -spacingY); // Cylinder
-addShape(new THREE.ConeGeometry(2,4,32), 0x9c27b0, 0, -spacingY);             // Cone
-addShape(new THREE.ConeGeometry(2,4,4), 0xff9800, spacingX, -spacingY);       // Pyramid
+// Bottom row (y = -spacingY/2)
+addShape(new THREE.CylinderGeometry(2,2,4,32), 0x2196f3, -spacingX, -spacingY/2); // Cylinder
+addShape(new THREE.ConeGeometry(2,4,32), 0x9c27b0, 0, -spacingY/2);             // Cone
+addShape(new THREE.ConeGeometry(2,4,4), 0xff9800, spacingX, -spacingY/2);       // Pyramid
 
 // Raycaster for grabbing shapes
 let raycaster = new THREE.Raycaster();
